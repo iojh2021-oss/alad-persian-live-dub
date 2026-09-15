@@ -43,7 +43,7 @@ class DubbingService : Service() {
         projection = pm.getMediaProjection(resultCode, data)
         player = AudioPlayer(this).also { it.start() }
         gemini = GeminiLiveClient(key).also { client ->
-            client.onStatus = { status.postValue(it) }
+            client.onStatus = { status.value = it }
             client.onAudio = { player?.write(it) }
             client.connect()
         }
