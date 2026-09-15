@@ -1,0 +1,10 @@
+./app/build.gradle.kts
+./app/src/main/AndroidManifest.xml
+./app/src/main/kotlin/com/alad/persiandub/AudioCapture.kt
+./app/src/main/kotlin/com/alad/persiandub/AudioPlayer.kt
+./app/src/main/kotlin/com/alad/persiandub/DubbingService.kt
+./app/src/main/kotlin/com/alad/persiandub/GeminiLiveClient.kt
+./app/src/main/kotlin/com/alad/persiandub/MainActivity.kt
+./app/src/main/res/values/styles.xml
+./build.gradle.kts
+./settings.gradle.kts

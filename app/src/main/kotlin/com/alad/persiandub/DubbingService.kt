@@ -3,8 +3,11 @@ package com.alad.persiandub
 import android.app.*
 import android.content.Context
 import android.content.Intent
+import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -20,7 +23,8 @@ class DubbingService : Service() {
     private var capture: AudioCapture? = null
     private var player: AudioPlayer? = null
     private var gemini: GeminiLiveClient? = null
-    private var projection: android.media.projection.MediaProjection? = null
+    private var projection: MediaProjection? = null
+    private var projectionCallback: MediaProjection.Callback? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
@@ -41,6 +45,18 @@ class DubbingService : Service() {
         stopDubbing(false)
         val pm = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
         projection = pm.getMediaProjection(resultCode, data)
+
+        // Required on Android 14+: must register a callback before using the
+        // MediaProjection (e.g. for AudioPlaybackCaptureConfiguration), otherwise
+        // the system throws IllegalStateException. Also lets us react if the user
+        // stops the capture from the system "Stop casting" notification/UI.
+        projectionCallback = object : MediaProjection.Callback() {
+            override fun onStop() {
+                stopDubbing()
+            }
+        }
+        projection?.registerCallback(projectionCallback!!, Handler(Looper.getMainLooper()))
+
         player = AudioPlayer(this).also { it.start() }
         gemini = GeminiLiveClient(key).also { client ->
             client.onStatus = { status.value = it }
@@ -58,6 +74,8 @@ class DubbingService : Service() {
         capture?.stop(); capture = null
         gemini?.close(); gemini = null
         player?.stop(); player = null
+        projectionCallback?.let { cb -> runCatching { projection?.unregisterCallback(cb) } }
+        projectionCallback = null
         projection?.stop(); projection = null
         running.value = false
         if (setStopped) status.value = "Stopped"

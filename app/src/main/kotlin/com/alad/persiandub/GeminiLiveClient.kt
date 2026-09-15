@@ -12,6 +12,11 @@ class GeminiLiveClient(private val apiKey: String) {
     companion object {
         private const val URL = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent"
         private const val MODEL = "models/gemini-3.1-flash-live-preview"
+        // Shared across connect/reconnect cycles instead of creating a new
+        // OkHttpClient (and its thread/connection pools) on every open().
+        private val httpClient: OkHttpClient by lazy {
+            OkHttpClient.Builder().readTimeout(0, TimeUnit.MILLISECONDS).build()
+        }
     }
     var onAudio: ((ByteArray) -> Unit)? = null
     var onStatus: ((String) -> Unit)? = null
@@ -29,7 +34,7 @@ class GeminiLiveClient(private val apiKey: String) {
 
     private fun open() {
         val request = Request.Builder().url("$URL?key=$apiKey").build()
-        ws = OkHttpClient.Builder().readTimeout(0, TimeUnit.MILLISECONDS).build().newWebSocket(request, object : WebSocketListener() {
+        ws = httpClient.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 ready = false
                 val setup = JSONObject().apply {
